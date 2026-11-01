@@ -17,11 +17,9 @@ def make_client(settings: Settings) -> httpx.Client:
 
 
 def search(client: httpx.Client, query: str) -> list[SearchResult]:
+    params = {"query": query, "type": "search", "indexerIds": -2}
     try:
-        response = client.get(
-            "/api/v1/search",
-            params={"query": query, "type": "search", "indexerIds": -2},
-        )
+        response = client.get("/api/v1/search", params=params)
     except httpx.HTTPError as exc:
         raise ProwlarrError(f"Could not reach Prowlarr: {exc}") from exc
 

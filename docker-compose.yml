@@ -20,13 +20,13 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-      - WEBUI_PORT=8080
+      - WEBUI_PORT=${QBITTORRENT_PORT}
       - TORRENTING_PORT=6881
     volumes:
       - ${CONFIG_PATH}/qbittorrent:/config
       - ${DOWNLOADS_PATH}:/downloads
     ports:
-      - "127.0.0.1:${QBITTORRENT_PORT}:8080"
+      - "127.0.0.1:${QBITTORRENT_PORT}:${QBITTORRENT_PORT}"
       - "6881:6881"
       - "6881:6881/udp"
     restart: unless-stopped
