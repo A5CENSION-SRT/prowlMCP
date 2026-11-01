@@ -1,0 +1,29 @@
+[project]
+name = "prowl-mcp"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Snehal Reddy Thadigotla", email = "snehalreddy@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.28.1",
+    "mcp>=1.28,<2",
+    "pydantic>=2.14.2",
+    "pydantic-settings>=2.16.2",
+]
+
+[project.scripts]
+prowl-mcp = "prowl_mcp:main"
+
+[build-system]
+requires = ["uv_build>=0.12.15,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "respx>=0.23.1",
+    "ruff>=0.17.3",
+]
