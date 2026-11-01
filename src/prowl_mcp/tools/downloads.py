@@ -12,9 +12,9 @@ def register_download_tools(mcp: FastMCP, client: httpx.Client, settings: Settin
     def add_torrent(info_hash: str) -> str:
         """Add a release from search_torrents by its info_hash, checking its file names before any download starts.
 
-        Only hashes returned by search_torrents in this session can be added. If the check verdict is ok, the
-        download starts. Otherwise the torrent is held stopped, and it can be started with resume_torrent only
-        after the user approves.
+        Only hashes returned by search_torrents in this session can be added. The file names are checked first.
+        If the verdict is ok, the download starts. If it is unsafe, the torrent and its files are removed. If it
+        is suspicious or unknown, the torrent is held stopped until resume_torrent starts it.
         """
         return downloads.add_release(client, settings, releases, info_hash)
 
@@ -48,5 +48,5 @@ def register_download_tools(mcp: FastMCP, client: httpx.Client, settings: Settin
 
     @mcp.tool()
     def remove_torrent(info_hash: str, delete_files: bool = False) -> str:
-        """Remove one torrent, by info_hash. Files are kept unless delete_files is true. Confirm with the user first."""
+        """Remove one torrent, by info_hash. Files are kept unless delete_files is true."""
         return downloads.remove_torrent(client, settings, info_hash, delete_files)
