@@ -10,9 +10,11 @@ from prowl_mcp.services.safety import SafetyReport
 def register_download_tools(mcp: FastMCP, client: httpx.Client, settings: Settings, releases: dict[str, SearchResult]) -> None:
     @mcp.tool()
     def add_torrent(info_hash: str) -> str:
-        """Start downloading a release from search_torrents, using its info_hash.
+        """Add a release from search_torrents by its info_hash, checking its file names before any download starts.
 
-        Only hashes returned by search_torrents in this session can be added.
+        Only hashes returned by search_torrents in this session can be added. If the check verdict is ok, the
+        download starts. Otherwise the torrent is held stopped, and it can be started with resume_torrent only
+        after the user approves.
         """
         return downloads.add_release(client, settings, releases, info_hash)
 

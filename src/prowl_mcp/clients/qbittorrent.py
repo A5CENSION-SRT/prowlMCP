@@ -23,7 +23,7 @@ def login(client: httpx.Client, settings: Settings) -> None:
         "username": settings.qbittorrent_username,
         "password": settings.qbittorrent_password.get_secret_value(),
     }
-    # Drop the old session cookie first. qBittorrent does not send a new one to a client that already has a valid session.
+    # qBittorrent sends no new cookie to a client that already has a session.
     client.cookies.clear()
     try:
         response = client.post("/api/v2/auth/login", data=credentials)
@@ -32,7 +32,6 @@ def login(client: httpx.Client, settings: Settings) -> None:
 
     if response.status_code == 403:
         raise QBittorrentError("qBittorrent blocked this IP (403) after failed logins.")
-    # qBittorrent 5.x names the session cookie after the port, e.g. QBT_SID_11112.
     has_session = any("SID" in name for name in response.cookies)
     if not has_session:
         raise QBittorrentError("qBittorrent rejected the username or password.")
@@ -72,11 +71,11 @@ def list_files(client: httpx.Client, info_hash: str) -> list[TorrentFile]:
 
 
 def add_torrent(client: httpx.Client, magnet: str) -> None:
-    # Share limits are set in the same request, so the torrent stops as soon as it finishes downloading:
-    # ratioLimit 0 is reached immediately once seeding starts. -1 turns off the seeding-time limits.
+    # ratioLimit 0 stops the torrent once it starts seeding; stopCondition holds it until its file list arrives.
     payload = {
         "urls": magnet,
         "tags": TAG,
+        "stopCondition": "MetadataReceived",
         "ratioLimit": "0",
         "seedingTimeLimit": "-1",
         "inactiveSeedingTimeLimit": "-1",
@@ -88,7 +87,7 @@ def add_torrent(client: httpx.Client, magnet: str) -> None:
         raise QBittorrentError(f"qBittorrent did not add the torrent: {response.text}")
 
 
-# qBittorrent 5.x calls pause "stop" and resume "start". The old names return 404 on this server.
+# qBittorrent 5.x names these stop and start; pause and resume return 404.
 def stop_torrent(client: httpx.Client, info_hash: str) -> None:
     _post(client, "/api/v2/torrents/stop", {"hashes": info_hash})
 

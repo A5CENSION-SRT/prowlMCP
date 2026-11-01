@@ -6,14 +6,13 @@ from pydantic import BaseModel
 from prowl_mcp.clients import qbittorrent
 from prowl_mcp.config import Settings
 from prowl_mcp.models.search import SearchResult
-from prowl_mcp.models.torrents import TorrentInfo
+from prowl_mcp.models.torrents import TorrentFile, TorrentInfo
 from prowl_mcp.services.safety import SafetyReport, check_files
 from prowl_mcp.services.search import format_size
 
-# qBittorrent reports this many seconds when it cannot estimate the time left.
+# qBittorrent's "unknown" ETA.
 QBITTORRENT_NO_ETA = 8640000
-# How long to wait after resuming before checking whether data is flowing.
-RESUME_CHECK_SECONDS = 10
+METADATA_POLL_SECONDS = 2
 
 
 class TorrentSummary(BaseModel):
@@ -57,6 +56,15 @@ def find_one(client: httpx.Client, info_hash: str) -> TorrentInfo:
     raise ValueError(f"No torrent with info_hash {info_hash} in qBittorrent.")
 
 
+def wait_for_files(client: httpx.Client, info_hash: str, timeout_seconds: int) -> list[TorrentFile]:
+    deadline = time.monotonic() + timeout_seconds
+    while True:
+        files = qbittorrent.list_files(client, info_hash)
+        if files or time.monotonic() >= deadline:
+            return files
+        time.sleep(METADATA_POLL_SECONDS)
+
+
 def add_release(client: httpx.Client, settings: Settings, releases: dict[str, SearchResult], info_hash: str) -> str:
     release = releases.get(info_hash.upper())
     if release is None:
@@ -69,7 +77,15 @@ def add_release(client: httpx.Client, settings: Settings, releases: dict[str, Se
         return f"Already added: {release.title}"
 
     qbittorrent.add_torrent(client, release.guid)
-    return f"Added to qBittorrent: {release.title}"
+    report = check_files(wait_for_files(client, release.info_hash, settings.metadata_timeout_seconds))
+
+    if report.verdict == "ok":
+        qbittorrent.start_torrent(client, release.info_hash)
+        return f"Added and started: {release.title}. Check: ok, {report.file_count} files."
+
+    qbittorrent.stop_torrent(client, release.info_hash)
+    reasons = "; ".join(report.unsafe + report.warnings) or "no file list arrived in time"
+    return f"Held, not started: {release.title}. Check: {report.verdict} ({reasons}). Start it with resume_torrent only if the user approves."
 
 
 def find_torrents(client: httpx.Client, settings: Settings, query: str) -> list[TorrentSummary]:
@@ -99,12 +115,11 @@ def resume_torrent(client: httpx.Client, settings: Settings, info_hash: str) -> 
     torrent = find_one(client, info_hash)
     qbittorrent.start_torrent(client, torrent.info_hash)
 
-    # Peers take a few seconds to connect, so check again before reporting whether the download is moving.
-    time.sleep(RESUME_CHECK_SECONDS)
+    time.sleep(settings.resume_check_seconds)
     qbittorrent.login(client, settings)
     torrent = find_one(client, info_hash)
     summary = summarize(torrent)
-    message = f"Resumed: {torrent.name}. After {RESUME_CHECK_SECONDS}s: {summary.state}, {summary.speed}, {summary.seeds} seeds."
+    message = f"Resumed: {torrent.name}. After {settings.resume_check_seconds}s: {summary.state}, {summary.speed}, {summary.seeds} seeds."
     if torrent.dlspeed == 0:
         message += " No data is coming in yet, so it may be stalled until peers reconnect."
     return message

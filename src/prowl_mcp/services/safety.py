@@ -5,19 +5,15 @@ from pydantic import BaseModel
 
 from prowl_mcp.models.torrents import TorrentFile
 
-# Files that can run code when opened. Any of these is an unsafe finding.
 EXECUTABLE_EXTENSIONS = {
     "exe", "msi", "msp", "bat", "cmd", "com", "scr", "pif", "cpl", "ps1", "vbs", "vbe",
     "js", "jse", "wsf", "wsh", "hta", "lnk", "reg", "jar", "apk", "dll", "sh", "app", "run",
 }  # fmt: skip
 
-# Files that can hide other files. The contents are not inspected, so these are warnings.
 ARCHIVE_EXTENSIONS = {"zip", "rar", "7z", "tar", "gz", "iso", "img", "cab"}
 
-# Files that are normally harmless but can point somewhere else. Warnings.
 LINK_EXTENSIONS = {"url"}
 
-# The extension a real media file would have, used to spot disguised executables like movie.mp4.exe.
 MEDIA_EXTENSIONS = {"mkv", "mp4", "avi", "m4v", "mov", "wmv", "ts", "srt", "sub", "idx", "ass", "nfo", "txt", "jpg", "jpeg", "png"}
 
 Verdict = Literal["ok", "suspicious", "unsafe", "unknown"]
