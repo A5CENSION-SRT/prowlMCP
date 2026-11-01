@@ -4,6 +4,7 @@ from mcp.server.fastmcp import FastMCP
 from prowl_mcp.config import Settings
 from prowl_mcp.models.search import SearchResult
 from prowl_mcp.services import downloads
+from prowl_mcp.services.safety import SafetyReport
 
 
 def register_download_tools(mcp: FastMCP, client: httpx.Client, settings: Settings, releases: dict[str, SearchResult]) -> None:
@@ -34,6 +35,14 @@ def register_download_tools(mcp: FastMCP, client: httpx.Client, settings: Settin
     def resume_torrent(info_hash: str) -> str:
         """Resume one paused torrent, by info_hash."""
         return downloads.resume_torrent(client, settings, info_hash)
+
+    @mcp.tool()
+    def check_torrent(info_hash: str) -> SafetyReport:
+        """Check a torrent's file names and extensions for risky content. Returns a verdict: ok, suspicious, unsafe, or unknown.
+
+        This reads names only. It cannot prove a file is safe, and it does not open archives.
+        """
+        return downloads.check_torrent(client, settings, info_hash)
 
     @mcp.tool()
     def remove_torrent(info_hash: str, delete_files: bool = False) -> str:

@@ -1,3 +1,5 @@
+import time
+
 import httpx
 from pydantic import BaseModel
 
@@ -5,10 +7,13 @@ from prowl_mcp.clients import qbittorrent
 from prowl_mcp.config import Settings
 from prowl_mcp.models.search import SearchResult
 from prowl_mcp.models.torrents import TorrentInfo
+from prowl_mcp.services.safety import SafetyReport, check_files
 from prowl_mcp.services.search import format_size
 
 # qBittorrent reports this many seconds when it cannot estimate the time left.
 QBITTORRENT_NO_ETA = 8640000
+# How long to wait after resuming before checking whether data is flowing.
+RESUME_CHECK_SECONDS = 10
 
 
 class TorrentSummary(BaseModel):
@@ -93,7 +98,22 @@ def resume_torrent(client: httpx.Client, settings: Settings, info_hash: str) -> 
     qbittorrent.login(client, settings)
     torrent = find_one(client, info_hash)
     qbittorrent.start_torrent(client, torrent.info_hash)
-    return f"Resumed: {torrent.name}"
+
+    # Peers take a few seconds to connect, so check again before reporting whether the download is moving.
+    time.sleep(RESUME_CHECK_SECONDS)
+    qbittorrent.login(client, settings)
+    torrent = find_one(client, info_hash)
+    summary = summarize(torrent)
+    message = f"Resumed: {torrent.name}. After {RESUME_CHECK_SECONDS}s: {summary.state}, {summary.speed}, {summary.seeds} seeds."
+    if torrent.dlspeed == 0:
+        message += " No data is coming in yet, so it may be stalled until peers reconnect."
+    return message
+
+
+def check_torrent(client: httpx.Client, settings: Settings, info_hash: str) -> SafetyReport:
+    qbittorrent.login(client, settings)
+    torrent = find_one(client, info_hash)
+    return check_files(qbittorrent.list_files(client, torrent.info_hash))
 
 
 def remove_torrent(client: httpx.Client, settings: Settings, info_hash: str, delete_files: bool) -> str:

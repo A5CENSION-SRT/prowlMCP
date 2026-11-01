@@ -1,7 +1,7 @@
 import httpx
 
 from prowl_mcp.config import Settings
-from prowl_mcp.models.torrents import TorrentInfo
+from prowl_mcp.models.torrents import TorrentFile, TorrentInfo
 
 TAG = "prowl"
 
@@ -23,6 +23,8 @@ def login(client: httpx.Client, settings: Settings) -> None:
         "username": settings.qbittorrent_username,
         "password": settings.qbittorrent_password.get_secret_value(),
     }
+    # Drop the old session cookie first. qBittorrent does not send a new one to a client that already has a valid session.
+    client.cookies.clear()
     try:
         response = client.post("/api/v2/auth/login", data=credentials)
     except httpx.HTTPError as exc:
@@ -56,6 +58,17 @@ def list_torrents(client: httpx.Client) -> list[TorrentInfo]:
     if response.status_code >= 400:
         raise QBittorrentError(f"qBittorrent returned {response.status_code} for the torrent list.")
     return [TorrentInfo.model_validate(item) for item in response.json()]
+
+
+def list_files(client: httpx.Client, info_hash: str) -> list[TorrentFile]:
+    try:
+        response = client.get("/api/v2/torrents/files", params={"hash": info_hash})
+    except httpx.HTTPError as exc:
+        raise QBittorrentError(f"Could not reach qBittorrent: {exc}") from exc
+
+    if response.status_code >= 400:
+        raise QBittorrentError(f"qBittorrent returned {response.status_code} for the file list.")
+    return [TorrentFile.model_validate(item) for item in response.json()]
 
 
 def add_torrent(client: httpx.Client, magnet: str) -> None:

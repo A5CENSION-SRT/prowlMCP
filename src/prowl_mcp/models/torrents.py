@@ -1,6 +1,11 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class TorrentFile(BaseModel):
+    name: str
+    size: int
+
+
 class TorrentInfo(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
