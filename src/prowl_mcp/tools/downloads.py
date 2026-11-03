@@ -47,6 +47,11 @@ def register_download_tools(mcp: FastMCP, client: httpx.Client, settings: Settin
         return downloads.check_torrent(client, settings, info_hash)
 
     @mcp.tool()
+    def check_disk_space() -> downloads.DiskSpace:
+        """Show how much free space qBittorrent has on its download folder. Check this before adding a large torrent."""
+        return downloads.check_disk_space(client, settings)
+
+    @mcp.tool()
     def remove_torrent(info_hash: str, delete_files: bool = False) -> str:
         """Remove one torrent, by info_hash. Files are kept unless delete_files is true."""
         return downloads.remove_torrent(client, settings, info_hash, delete_files)

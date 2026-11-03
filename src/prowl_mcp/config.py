@@ -11,6 +11,13 @@ class Settings(BaseSettings):
     qbittorrent_url: str
     qbittorrent_username: str
     qbittorrent_password: SecretStr
+    qbittorrent_save_path: str
+    downloads_path: str
+    qbittorrent_tag: str = "prowl"
+    default_search_limit: int = Field(default=20, ge=1)
+    prowlarr_indexer_ids: int = -2
+    tv_library_path: str
+    movies_library_path: str
     jellyfin_url: str
     jellyfin_api_key: SecretStr
     ssh_host: str
@@ -22,6 +29,8 @@ class Settings(BaseSettings):
     max_search_queries: int = Field(default=3, ge=1)
     search_results_per_query: int = Field(default=10, ge=1)
     metadata_timeout_seconds: int = Field(default=60, ge=1)
+    metadata_poll_seconds: int = Field(default=2, ge=1)
+    qbittorrent_no_eta: int = Field(default=8640000, ge=1)
     resume_check_seconds: int = Field(default=10, ge=1)
 
 

@@ -16,8 +16,8 @@ def make_client(settings: Settings) -> httpx.Client:
     )
 
 
-def search(client: httpx.Client, query: str) -> list[SearchResult]:
-    params = {"query": query, "type": "search", "indexerIds": -2}
+def search(client: httpx.Client, query: str, indexer_ids: int) -> list[SearchResult]:
+    params = {"query": query, "type": "search", "indexerIds": indexer_ids}
     try:
         response = client.get("/api/v1/search", params=params)
     except httpx.HTTPError as exc:

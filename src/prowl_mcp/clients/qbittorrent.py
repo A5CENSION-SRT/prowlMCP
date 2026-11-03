@@ -3,8 +3,6 @@ import httpx
 from prowl_mcp.config import Settings
 from prowl_mcp.models.torrents import TorrentFile, TorrentInfo
 
-TAG = "prowl"
-
 
 class QBittorrentError(Exception):
     pass
@@ -70,11 +68,23 @@ def list_files(client: httpx.Client, info_hash: str) -> list[TorrentFile]:
     return [TorrentFile.model_validate(item) for item in response.json()]
 
 
-def add_torrent(client: httpx.Client, magnet: str) -> None:
+def free_space_bytes(client: httpx.Client) -> int:
+    # The maindata endpoint reports free space on the default save path.
+    try:
+        response = client.get("/api/v2/sync/maindata", params={"rid": 0})
+    except httpx.HTTPError as exc:
+        raise QBittorrentError(f"Could not reach qBittorrent: {exc}") from exc
+
+    if response.status_code >= 400:
+        raise QBittorrentError(f"qBittorrent returned {response.status_code} for server state.")
+    return int(response.json()["server_state"]["free_space_on_disk"])
+
+
+def add_torrent(client: httpx.Client, magnet: str, tag: str) -> None:
     # ratioLimit 0 stops the torrent once it starts seeding; stopCondition holds it until its file list arrives.
     payload = {
         "urls": magnet,
-        "tags": TAG,
+        "tags": tag,
         "stopCondition": "MetadataReceived",
         "ratioLimit": "0",
         "seedingTimeLimit": "-1",

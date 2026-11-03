@@ -2,6 +2,7 @@ import httpx
 from pydantic import BaseModel
 
 from prowl_mcp.clients.prowlarr import search
+from prowl_mcp.config import Settings
 from prowl_mcp.models.search import SearchResult
 
 
@@ -21,15 +22,15 @@ def format_size(size_bytes: int) -> str:
     return f"{size:.1f} TiB"
 
 
-def find_releases(client: httpx.Client, queries: list[str], releases: dict[str, SearchResult], max_queries: int, per_query: int, limit: int = 20) -> list[ReleaseSummary]:
+def find_releases(client: httpx.Client, queries: list[str], releases: dict[str, SearchResult], settings: Settings, limit: int) -> list[ReleaseSummary]:
     cleaned = [q.strip() for q in queries if q.strip()]
-    if not 1 <= len(cleaned) <= max_queries:
-        raise ValueError(f"Give between 1 and {max_queries} non-empty queries.")
+    if not 1 <= len(cleaned) <= settings.max_search_queries:
+        raise ValueError(f"Give between 1 and {settings.max_search_queries} non-empty queries.")
 
     found: dict[str, SearchResult] = {}
     for query in cleaned:
-        seeded = [r for r in search(client, query) if r.seeders > 0]
-        best_for_query = sorted(seeded, key=lambda r: r.seeders, reverse=True)[:per_query]
+        seeded = [r for r in search(client, query, settings.prowlarr_indexer_ids) if r.seeders > 0]
+        best_for_query = sorted(seeded, key=lambda r: r.seeders, reverse=True)[: settings.search_results_per_query]
         for r in best_for_query:
             found.setdefault(r.info_hash.upper(), r)
 
