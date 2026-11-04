@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     qbittorrent_save_path: str
     downloads_path: str
     qbittorrent_tag: str = "prowl"
+    qbittorrent_processed_tag: str = "processed"
+    completion_check_seconds: int = Field(default=300, ge=1)
     default_search_limit: int = Field(default=20, ge=1)
     prowlarr_indexer_ids: int = -2
     tv_library_path: str

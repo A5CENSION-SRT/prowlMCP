@@ -106,6 +106,10 @@ def start_torrent(client: httpx.Client, info_hash: str) -> None:
     _post(client, "/api/v2/torrents/start", {"hashes": info_hash})
 
 
+def add_tags(client: httpx.Client, info_hash: str, tag: str) -> None:
+    _post(client, "/api/v2/torrents/addTags", {"hashes": info_hash, "tags": tag})
+
+
 def delete_torrent(client: httpx.Client, info_hash: str, delete_files: bool) -> None:
     payload = {"hashes": info_hash, "deleteFiles": "true" if delete_files else "false"}
     _post(client, "/api/v2/torrents/delete", payload)
