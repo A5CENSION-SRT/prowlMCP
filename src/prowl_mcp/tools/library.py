@@ -16,6 +16,11 @@ def register_library_tools(mcp: FastMCP, jf_client: httpx.Client, settings: Sett
         return library_service.list_library(settings, kind)
 
     @mcp.tool()
+    def list_server_folder(kind: Literal["tv", "movies"], folder: str) -> LibraryListing:
+        """Read-only: list the files in one folder inside the Jellyfin TV or Movies library, such as 'Example Show (2025)/Season 02'. An empty folder or a missing one returns no files. It changes nothing on the server."""
+        return library_service.list_folder(settings, kind, folder)
+
+    @mcp.tool()
     def request_library_delete(kind: Literal["tv", "movies"], path: str) -> library_service.DeletePlan:
         """Step 1 of 2 to delete a file or folder on the Jellyfin server. Returns what would be deleted and a code. Show this to the user and ask for approval. Nothing is deleted yet."""
         return library_service.request_delete(settings, kind, path)
@@ -27,6 +32,6 @@ def register_library_tools(mcp: FastMCP, jf_client: httpx.Client, settings: Sett
 
     @mcp.tool()
     def refresh_library() -> str:
-        """Ask Jellyfin to rescan all libraries so newly transferred files appear. Takes effect in the background."""
-        jellyfin.refresh_library(jf_client)
-        return "Jellyfin library refresh requested."
+        """Ask Jellyfin to rescan all libraries so newly transferred files appear, then wait for the scan to finish and report how it ended."""
+        status = jellyfin.refresh_and_wait(jf_client, settings.jellyfin_scan_timeout_seconds, settings.jellyfin_scan_poll_seconds)
+        return f"Jellyfin library refresh requested: {status}."

@@ -33,7 +33,16 @@ class LibraryListing(BaseModel):
 
 def list_library(settings: Settings, kind: Literal["tv", "movies"]) -> LibraryListing:
     root = settings.tv_library_path if kind == "tv" else settings.movies_library_path
-    entries = sorted(remote_files(settings, root).items())
+    return _listing(kind, remote_files(settings, root))
+
+
+def list_folder(settings: Settings, kind: Literal["tv", "movies"], relative: str) -> LibraryListing:
+    # Read-only: lists one folder inside the library, with no changes on the server.
+    return _listing(kind, remote_files(settings, _server_path(settings, kind, relative)))
+
+
+def _listing(kind: Literal["tv", "movies"], found: dict[str, int]) -> LibraryListing:
+    entries = sorted(found.items())
     files = [LibraryFile(path=path, size=format_size(size)) for path, size in entries[:MAX_LISTED]]
     return LibraryListing(kind=kind, total=len(entries), shown=len(files), files=files)
 

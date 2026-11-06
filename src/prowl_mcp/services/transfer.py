@@ -1,3 +1,4 @@
+import hashlib
 import re
 import shlex
 import subprocess
@@ -12,6 +13,7 @@ from prowl_mcp.config import Settings
 from prowl_mcp.services.downloads import find_one
 
 TV_PATTERN = re.compile(r"S\d{1,2}E\d{1,3}", re.IGNORECASE)
+RENAMEABLE_EXTENSIONS = {"mkv", "mp4", "m4v", "avi", "mov", "wmv", "ts"}
 Kind = Literal["tv", "movies"]
 
 
@@ -23,6 +25,7 @@ class TransferReport(BaseModel):
     remote_path: str
     copied: list[str]
     skipped: list[str]
+    verified: list[str] = []
 
 
 def library_root(settings: Settings, kind: Kind) -> str:
@@ -76,8 +79,25 @@ def local_files(local: Path) -> dict[str, int]:
     return {str(file.relative_to(local)): file.stat().st_size for file in local.rglob("*") if file.is_file()}
 
 
+def local_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def remote_sha256(settings: Settings, remote_file: str) -> str:
+    result = _ssh_run(settings, f"sha256sum -- {shlex.quote(remote_file)}")
+    if result.returncode != 0:
+        raise TransferError(f"Could not checksum {remote_file}: {result.stderr.strip()}")
+    return result.stdout.split()[0]
+
+
 def remote_files(settings: Settings, remote_path: str) -> dict[str, int]:
-    script = f"find {shlex.quote(remote_path)} -type f -printf '%P\\t%s\\n' 2>/dev/null"
+    # A path that does not exist yet is an empty listing, not an error.
+    quoted = shlex.quote(remote_path)
+    script = f"if [ -e {quoted} ]; then find {quoted} -type f -printf '%P\\t%s\\n'; fi"
     result = _ssh_run(settings, script)
     if result.returncode != 0:
         raise TransferError(f"Could not list the server folder: {result.stderr.strip()}")
@@ -89,58 +109,109 @@ def remote_files(settings: Settings, remote_path: str) -> dict[str, int]:
     return files
 
 
-def copy_to_destination(settings: Settings, local: Path, destination: str, dry_run: bool = False) -> None:
-    flags = ["-a", "--partial", "--ignore-existing"] + (["--dry-run"] if dry_run else [])
+def target_name(name: str, show: str | None) -> str:
+    # 'The.Example Show.S08E01.Title.1080p.mkv' becomes 'Example Show (2018) - S08E01.mkv', the way Jellyfin likes it.
+    path = PurePosixPath(name)
+    match = TV_PATTERN.search(path.name)
+    if show is None or match is None or path.suffix.lower().lstrip(".") not in RENAMEABLE_EXTENSIONS:
+        return name
+    return str(path.with_name(f"{show} - {match.group(0).upper()}{path.suffix.lower()}"))
+
+
+def plan_files(local: Path, flatten: bool, show: str | None) -> dict[str, Path]:
+    """Map each path on the server, relative to the destination, to the local file that goes there."""
+    # A folder torrent keeps its own folder unless flatten is set, so a pack never spills into the library root.
+    prefix = "" if flatten or local.is_file() else f"{local.name}/"
+    plan: dict[str, Path] = {}
+    for name in local_files(local):
+        target = prefix + target_name(name, show)
+        if target in plan:
+            raise TransferError(f"Two files would both become {target}. Turn rename off or rename one of them.")
+        plan[target] = local if local.is_file() else local / name
+    return plan
+
+
+def copy_file(settings: Settings, source: Path, remote_file: str) -> None:
+    parent = str(PurePosixPath(remote_file).parent)
+    made = _ssh_run(settings, f"mkdir -p -- {shlex.quote(parent)}")
+    if made.returncode != 0:
+        raise TransferError(f"Could not create {parent}: {made.stderr.strip()}")
+
     rsh = " ".join(["ssh", *_ssh_options(settings)])
     result = subprocess.run(
-        ["rsync", *flags, "-e", rsh, str(local), f"{_ssh_target(settings)}:{destination}/"],
+        ["rsync", "-a", "--partial", "--ignore-existing", "-e", rsh, str(source), f"{_ssh_target(settings)}:{remote_file}"],
         capture_output=True,
         text=True,
         check=False,
     )
     if result.returncode != 0:
-        raise TransferError(f"rsync failed: {result.stderr.strip()}")
+        raise TransferError(f"rsync failed for {source.name}: {result.stderr.strip()}")
 
 
-def transfer(settings: Settings, local: Path, destination: str) -> TransferReport:
-    remote_path = f"{destination}/{local.name}"
+def transfer(settings: Settings, local: Path, destination: str, flatten: bool = False, show: str | None = None) -> TransferReport:
+    plan = plan_files(local, flatten, show)
     made = _ssh_run(settings, f"mkdir -p -- {shlex.quote(destination)}")
     if made.returncode != 0:
         raise TransferError(f"Could not create {destination}: {made.stderr.strip()}")
 
-    before = remote_files(settings, remote_path)
-    copy_to_destination(settings, local, destination)
-    after = remote_files(settings, remote_path)
+    before = remote_files(settings, destination)
+    for target, source in plan.items():
+        if target not in before:
+            copy_file(settings, source, f"{destination}/{target}")
+    after = remote_files(settings, destination)
 
     copied, skipped = [], []
-    for name, size in local_files(local).items():
-        if name in before:
-            skipped.append(name)
+    for target, source in plan.items():
+        if target in before:
+            skipped.append(target)
             continue
-        if after.get(name) != size:
-            raise TransferError(f"Size mismatch for {name}: local {size} bytes, server {after.get(name)} bytes.")
-        copied.append(name)
-    return TransferReport(remote_path=remote_path, copied=copied, skipped=skipped)
+        size = source.stat().st_size
+        if after.get(target) != size:
+            raise TransferError(f"Size mismatch for {target}: local {size} bytes, server {after.get(target)} bytes.")
+        copied.append(target)
+
+    verified = verify_checksums(settings, destination, plan, copied)
+    return TransferReport(remote_path=destination, copied=copied, skipped=skipped, verified=verified)
 
 
-def transfer_torrent(
-    client_qb: httpx.Client,
-    client_jf: httpx.Client,
-    settings: Settings,
-    info_hash: str,
-    kind: Kind | None = None,
-    folder: str | None = None,
-) -> str:
-    qbittorrent.login(client_qb, settings)
-    torrent = find_one(client_qb, info_hash)
+def verify_checksums(settings: Settings, destination: str, plan: dict[str, Path], targets: list[str]) -> list[str]:
+    verified = []
+    for target in targets:
+        if local_sha256(plan[target]) != remote_sha256(settings, f"{destination}/{target}"):
+            raise TransferError(f"Checksum mismatch for {target}: the server copy does not match the local file.")
+        verified.append(target)
+    return verified
+
+
+def check_jellyfin(jf_client: httpx.Client, settings: Settings, report: TransferReport) -> str:
+    # The files are already copied, so a Jellyfin problem is reported here and does not fail the transfer.
+    videos = {PurePosixPath(target).name for target in report.copied + report.skipped if PurePosixPath(target).suffix.lower().lstrip(".") in RENAMEABLE_EXTENSIONS}
+    try:
+        scan = jellyfin.refresh_and_wait(jf_client, settings.jellyfin_scan_timeout_seconds, settings.jellyfin_scan_poll_seconds)
+        seen = jellyfin.find_items(jf_client, videos)
+    except jellyfin.JellyfinError as exc:
+        return f"Jellyfin check failed: {exc}. Files are on the server; try refresh_library."
+    line = f"Jellyfin: {scan}; it lists {len(seen)} of {len(videos)} videos from this transfer."
+    missing = sorted(videos - seen)
+    return line + (f" Not listed yet: {', '.join(missing)}." if missing else "")
+
+
+def transfer_torrent(qb_client: httpx.Client, jf_client: httpx.Client, settings: Settings, info_hash: str, kind: Kind | None = None, folder: str | None = None, rename: bool = True) -> str:
+    qbittorrent.login(qb_client, settings)
+    torrent = find_one(qb_client, info_hash)
     if torrent.progress < 1:
         raise TransferError(f"{torrent.name} is not finished ({torrent.progress:.0%}).")
 
     destination = resolve_destination(settings, kind, folder, torrent.name)
-    report = transfer(settings, host_path(torrent.save_path, torrent.name, settings), destination)
-    jellyfin.refresh_library(client_jf)
+    # With a folder given, the files go straight into it. Without one, a folder torrent keeps its own folder.
+    flatten = folder is not None
+    is_tv = (kind or library_for(torrent.name, settings)) == "tv"
+    show = PurePosixPath(folder).parts[0] if rename and flatten and is_tv else None
 
-    message = f"Copied {len(report.copied)} new file(s) to {report.remote_path}."
+    report = transfer(settings, host_path(torrent.save_path, torrent.name, settings), destination, flatten, show)
+    message = f"Copied {len(report.copied)} new file(s) to {report.remote_path}. Checksums match for {len(report.verified)}.\n{check_jellyfin(jf_client, settings, report)}"
+    if report.copied:
+        message += "\n" + "\n".join(report.copied)
     if report.skipped:
-        message += f" Skipped {len(report.skipped)} already on the server: {', '.join(report.skipped)}."
-    return message + " Local files are kept."
+        message += f"\nSkipped {len(report.skipped)} already on the server: {', '.join(report.skipped)}."
+    return message + "\nLocal files are kept."

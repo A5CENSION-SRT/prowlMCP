@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     metadata_poll_seconds: int = Field(default=2, ge=1)
     qbittorrent_no_eta: int = Field(default=8640000, ge=1)
     resume_check_seconds: int = Field(default=10, ge=1)
+    completion_max_attempts: int = Field(default=3, ge=1)
+    qbittorrent_failed_tag: str = "failed"
+    jellyfin_scan_timeout_seconds: int = Field(default=180, ge=1)
+    jellyfin_scan_poll_seconds: int = Field(default=3, ge=1)
 
 
 settings = Settings()

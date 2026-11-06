@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from prowl_mcp.models.torrents import TorrentFile
+from prowl_mcp.services.search import format_size
 
 EXECUTABLE_EXTENSIONS = {
     "exe", "msi", "msp", "bat", "cmd", "com", "scr", "pif", "cpl", "ps1", "vbs", "vbe",
@@ -24,10 +25,25 @@ class SafetyReport(BaseModel):
     file_count: int
     unsafe: list[str]
     warnings: list[str]
+    contents: list[str] = []
 
 
 def _extension(path: PurePosixPath) -> str:
     return path.suffix.lstrip(".").lower()
+
+
+def render_tree(files: list[TorrentFile]) -> list[str]:
+    lines: list[str] = []
+    seen_folders: set[tuple[str, ...]] = set()
+    for file in sorted(files, key=lambda f: f.name.lower()):
+        parts = PurePosixPath(file.name).parts
+        for depth in range(len(parts) - 1):
+            folder = parts[: depth + 1]
+            if folder not in seen_folders:
+                seen_folders.add(folder)
+                lines.append(f"{'  ' * depth}{parts[depth]}/")
+        lines.append(f"{'  ' * (len(parts) - 1)}{parts[-1]} ({format_size(file.size)})")
+    return lines
 
 
 def check_files(files: list[TorrentFile]) -> SafetyReport:
@@ -61,4 +77,4 @@ def check_files(files: list[TorrentFile]) -> SafetyReport:
     else:
         verdict = "ok"
 
-    return SafetyReport(verdict=verdict, file_count=len(files), unsafe=unsafe[:10], warnings=warnings[:10])
+    return SafetyReport(verdict=verdict, file_count=len(files), unsafe=unsafe[:10], warnings=warnings[:10], contents=render_tree(files))

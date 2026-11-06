@@ -1,0 +1,10 @@
+[Unit]
+Description=Check for finished downloads every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Unit=prowl-notify.service
+
+[Install]
+WantedBy=timers.target

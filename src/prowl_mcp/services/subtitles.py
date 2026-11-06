@@ -13,6 +13,7 @@ from prowl_mcp.services.transfer import host_path
 
 ENGLISH_TAGS = {"eng", "en", "english"}
 VIDEO_EXTENSIONS = {"mkv", "mp4", "m4v", "avi", "mov", "wmv", "ts"}
+EPISODE_PATTERN = re.compile(r"S\d{1,2}E\d{1,3}", re.IGNORECASE)
 
 
 class SubtitleError(Exception):
@@ -35,10 +36,12 @@ def has_embedded_english_srt(video: Path) -> bool:
     return any(stream.get("codec_name") == "subrip" and stream.get("tags", {}).get("language", "").lower() in ENGLISH_TAGS for stream in _subtitle_streams(video))
 
 
-def find_english_srt(files: list[TorrentFile]) -> str | None:
+def find_english_srt(files: list[TorrentFile], code: str | None = None) -> str | None:
     matches = []
     for file in files:
         if PurePosixPath(file.name).suffix.lower() != ".srt":
+            continue
+        if code is not None and not re.search(rf"{code}(?!\d)", file.name, re.IGNORECASE):
             continue
         if set(re.split(r"[^a-z]+", file.name.lower())) & ENGLISH_TAGS:
             matches.append(file.name)
@@ -74,6 +77,20 @@ def embed_srt(video: Path, srt: Path) -> None:
     temp.replace(video)
 
 
+def episode_code(name: str) -> str | None:
+    match = EPISODE_PATTERN.search(name)
+    return match.group(0).upper() if match else None
+
+
+def srt_for_video(video_name: str, files: list[TorrentFile], single_video: bool) -> str | None:
+    if single_video:
+        return find_english_srt(files)
+    code = episode_code(video_name)
+    if code is None:
+        return None
+    return find_english_srt(files, code)
+
+
 def process_subtitles(client: httpx.Client, settings: Settings, info_hash: str) -> str:
     qbittorrent.login(client, settings)
     torrent = find_one(client, info_hash)
@@ -81,18 +98,30 @@ def process_subtitles(client: httpx.Client, settings: Settings, info_hash: str) 
         raise SubtitleError(f"{torrent.name} is not finished ({torrent.progress:.0%}).")
 
     files = qbittorrent.list_files(client, torrent.info_hash)
-    videos = [f for f in files if PurePosixPath(f.name).suffix.lower().lstrip(".") in VIDEO_EXTENSIONS]
-    if len(videos) != 1:
-        raise SubtitleError(f"{torrent.name} has {len(videos)} video files; only single-video torrents are handled for now.")
+    videos = [f.name for f in files if PurePosixPath(f.name).suffix.lower().lstrip(".") in VIDEO_EXTENSIONS]
+    if not videos:
+        raise SubtitleError(f"{torrent.name} has no video files.")
 
     base = host_path(torrent.save_path, "", settings)
-    video = base / videos[0].name
-    if has_embedded_english_srt(video):
-        return f"Kept the embedded English subtitles in {video.name}."
+    single_video = len(videos) == 1
+    lines, failures = [], []
+    for name in videos:
+        video = base / name
+        try:
+            if has_embedded_english_srt(video):
+                lines.append(f"Kept the embedded English subtitles in {name}.")
+                continue
+            external = srt_for_video(name, files, single_video)
+            if external is None:
+                lines.append(f"No matching English SRT for {name}; left as it is.")
+                continue
+            embed_srt(video, base / external)
+            lines.append(f"Embedded {external} into {name}. The sidecar SRT is kept.")
+        except SubtitleError as exc:
+            failures.append(str(exc))
+            lines.append(f"Failed: {exc}")
 
-    external = find_english_srt(files)
-    if external is None:
-        return f"No English SRT found for {video.name}; left as it is."
-
-    embed_srt(video, base / external)
-    return f"Embedded {external} into {video.name}. The sidecar SRT is kept."
+    # Raise after going through every episode, so the runner retries the whole torrent and skips the finished ones.
+    if failures:
+        raise SubtitleError("\n".join(lines))
+    return "\n".join(lines)

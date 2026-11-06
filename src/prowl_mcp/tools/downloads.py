@@ -40,7 +40,8 @@ def register_download_tools(mcp: FastMCP, client: httpx.Client, settings: Settin
 
     @mcp.tool()
     def check_torrent(info_hash: str) -> SafetyReport:
-        """Check a torrent's file names and extensions for risky content. Returns a verdict: ok, suspicious, unsafe, or unknown.
+        """Check a torrent's file names and extensions for risky content. Returns a verdict: ok, suspicious, unsafe, or unknown,
+        plus the full folder and file tree (contents) with sizes. Show the verdict and the whole tree in the chat.
 
         This reads names only. It cannot prove a file is safe, and it does not open archives.
         """

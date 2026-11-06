@@ -93,7 +93,14 @@ def add_torrent(client: httpx.Client, magnet: str, tag: str) -> None:
         "shareLimitAction": "Stop",
     }
     response = _post(client, "/api/v2/torrents/add", payload)
-    if response.text != "Ok.":
+    if response.text == "Ok.":
+        return
+    # qBittorrent 5.x answers with JSON counts instead of "Ok.", and a failure_count of 0 means it was added.
+    try:
+        result = response.json()
+    except ValueError:
+        raise QBittorrentError(f"qBittorrent did not add the torrent: {response.text}") from None
+    if result.get("failure_count", 1) != 0 or result.get("success_count", 0) < 1:
         raise QBittorrentError(f"qBittorrent did not add the torrent: {response.text}")
 
 

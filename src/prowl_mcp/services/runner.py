@@ -16,16 +16,28 @@ log = logging.getLogger(__name__)
 LOCK_PATH = Path.home() / ".cache" / "prowl-mcp" / "runner.lock"
 
 
+# Failed attempts per torrent in this server. The failed tag in qBittorrent keeps a given-up torrent skipped after a restart.
+_attempts: dict[str, int] = {}
+
+
 def process_completed(client: httpx.Client, settings: Settings) -> None:
     qbittorrent.login(client, settings)
     for torrent in qbittorrent.list_torrents(client):
-        if torrent.progress < 1 or settings.qbittorrent_processed_tag in torrent.tags.split(", "):
+        tags = torrent.tags.split(", ")
+        if torrent.progress < 1 or settings.qbittorrent_processed_tag in tags or settings.qbittorrent_failed_tag in tags:
             continue
         try:
             outcome = subtitles.process_subtitles(client, settings, torrent.info_hash)
         except Exception:
-            log.warning("Could not process %s; will retry at the next check.", torrent.name, exc_info=True)
+            attempts = _attempts.get(torrent.info_hash, 0) + 1
+            _attempts[torrent.info_hash] = attempts
+            if attempts >= settings.completion_max_attempts:
+                qbittorrent.add_tags(client, torrent.info_hash, settings.qbittorrent_failed_tag)
+                log.exception("Giving up on %s after %d attempts and tagged it '%s'. Fix it, then remove the tag to try again.", torrent.name, attempts, settings.qbittorrent_failed_tag)
+            else:
+                log.warning("Could not process %s (attempt %d of %d); will retry at the next check.", torrent.name, attempts, settings.completion_max_attempts, exc_info=True)
             continue
+        _attempts.pop(torrent.info_hash, None)
         qbittorrent.add_tags(client, torrent.info_hash, settings.qbittorrent_processed_tag)
         log.info("%s: %s", torrent.name, outcome)
 

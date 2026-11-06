@@ -79,14 +79,14 @@ def add_release(client: httpx.Client, settings: Settings, releases: dict[str, Se
 
     if report.verdict == "ok":
         qbittorrent.start_torrent(client, release.info_hash)
-        return f"Added and started: {release.title}. Check: ok, {report.file_count} files."
+        return f"Added and started: {release.title}. Check: ok, {report.file_count} files.\n" + "\n".join(report.contents)
 
     if report.verdict == "unsafe":
         qbittorrent.delete_torrent(client, release.info_hash, delete_files=True)
         return f"Removed with its files: {release.title}. Check: unsafe ({reasons})."
 
     qbittorrent.stop_torrent(client, release.info_hash)
-    return f"Held, not started: {release.title}. Check: {report.verdict} ({reasons}). Use resume_torrent to start it."
+    return f"Held, not started: {release.title}. Check: {report.verdict} ({reasons}). Use resume_torrent to start it.\n" + "\n".join(report.contents)
 
 
 def find_torrents(client: httpx.Client, settings: Settings, query: str) -> list[TorrentSummary]:
