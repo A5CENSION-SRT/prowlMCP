@@ -24,8 +24,7 @@ It ties together three self-hosted tools (Prowlarr, qBittorrent, Jellyfin) behin
 12. [Working with an AI assistant](#12-working-with-an-ai-assistant)
 13. [Troubleshooting](#13-troubleshooting)
 14. [Limits and status](#14-limits-and-status)
-15. [Regenerating the diagrams](#15-regenerating-the-diagrams)
-16. [License](#16-license)
+15. [License](#15-license)
 
 ---
 
@@ -338,16 +337,6 @@ Anything specific to one person's setup (real addresses, user names, key paths, 
 - Automated tests are on hold. The pipeline, transfer, subtitle and Jellyfin logic have been checked with offline scripts that use fake servers; end-to-end runs against real downloads are still limited.
 - Linux only (systemd timers, `notify-send`, `fcntl` locks).
 
-## 15. Regenerating the diagrams
-
-The diagrams are Mermaid sources (`docs/diagrams/*.mmd`) rendered locally to SVG, so the README looks the same everywhere with no online renderer.
-
-```bash
-scripts/render_diagrams.sh     # needs Node.js and Chrome or Chromium; set CHROME_PATH if needed
-```
-
-Edit a `.mmd` file, run the script, commit both the source and the SVG.
-
-## 16. License
+## 15. License
 
 MIT. See [LICENSE](LICENSE).
