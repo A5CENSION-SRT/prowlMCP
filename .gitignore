@@ -52,3 +52,6 @@ Thumbs.db
 # --- Logs ---
 logs/
 *.log
+# --- Local-only assistant notes ---
+CLAUDE.local.md
+docs/memory/

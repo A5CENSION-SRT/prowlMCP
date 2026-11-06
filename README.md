@@ -21,7 +21,7 @@ It ties together three self-hosted tools (Prowlarr, qBittorrent, Jellyfin) behin
 9. [Setup](#9-setup)
 10. [Configuration reference](#10-configuration-reference)
 11. [Project layout](#11-project-layout)
-12. [Project memory notes for AI sessions](#12-project-memory-notes-for-ai-sessions)
+12. [Working with an AI assistant](#12-working-with-an-ai-assistant)
 13. [Troubleshooting](#13-troubleshooting)
 14. [Limits and status](#14-limits-and-status)
 15. [Regenerating the diagrams](#15-regenerating-the-diagrams)
@@ -307,24 +307,15 @@ scripts/
   systemd/                       worker and notifier timer units
 docs/
   diagrams/            Mermaid sources and rendered SVGs
-  memory/              project notes for AI sessions
 docker-compose.yml     Prowlarr and qBittorrent
-CLAUDE.md              points AI sessions at the notes
+CLAUDE.md              working rules for AI sessions
 ```
 
-## 12. Project memory notes for AI sessions
+## 12. Working with an AI assistant
 
-The repository carries a set of short notes in `docs/memory/` that a new AI session reads before acting. `CLAUDE.md` imports them, so they load automatically when a session opens in this folder. They are written with placeholders instead of real addresses, user names and key paths; the owner keeps a private copy with the real values in the assistant's own memory folder.
+`CLAUDE.md` holds the short working rules an AI session follows in this repository: which path to use for which task, what needs the user's approval, and what must never be written into tracked files. Section 4 of this README is the decision guide.
 
-| Note | Read it for |
-|---|---|
-| `when-to-use-what.md` | Start here. Session-start checklist, which path for which task, recipes, exit codes, failure playbook, approvals |
-| `prowl-mcp-usage.md` | How the server runs, the tools, the normal flow, timers, known gaps |
-| `mcp-first-terminal-fallback.md` | When plain terminal commands are fine instead of a tool |
-| `transfer-processed-file-only.md` | Why only the final, subtitle-processed file is pushed |
-| `jellyfin-restart-no-approval.md` | Restarting Jellyfin needs no approval; deletions still do |
-| `media-server-end-to-end.md` | Server commands, folder naming, subtitles, device notes |
-| `MEMORY.md` | The index |
+Anything specific to one person's setup (real addresses, user names, key paths, device notes) belongs **outside** the repository. With Claude Code, put it in the assistant's own memory folder and load it through a git-ignored `CLAUDE.local.md`, so it is never committed.
 
 ## 13. Troubleshooting
 
