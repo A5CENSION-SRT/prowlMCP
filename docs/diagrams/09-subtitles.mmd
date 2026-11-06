@@ -1,0 +1,13 @@
+flowchart TD
+    s(["For each video in the download"]) --> emb{"Embedded English<br/>subtitle track?"}
+    emb -->|"yes"| keep["Keep as is"]
+    emb -->|"no"| find{"Matching English .srt<br/>(same episode code)?"}
+    find -->|"no"| left["Leave the video as is"]
+    find -->|"yes"| mux["ffmpeg copies all streams<br/>into a temp file + the .srt"]
+    mux --> check{"ffprobe: exactly one<br/>new English subrip track?"}
+    check -->|"no"| fail["Delete temp file, original untouched,<br/>count as a failure"]
+    check -->|"yes"| swap["Replace the original with the temp file"]
+    keep --> next(["Next video"])
+    left --> next
+    swap --> next
+    fail --> next

@@ -121,7 +121,7 @@ def process_subtitles(client: httpx.Client, settings: Settings, info_hash: str) 
             failures.append(str(exc))
             lines.append(f"Failed: {exc}")
 
-    # Raise after going through every episode, so the runner retries the whole torrent and skips the finished ones.
+    # Raise after going through every episode, so a retry runs the whole torrent again and skips the finished ones.
     if failures:
         raise SubtitleError("\n".join(lines))
     return "\n".join(lines)

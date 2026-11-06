@@ -1,0 +1,10 @@
+[Unit]
+Description=Run the prowl-mcp delivery worker every 5 minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+Unit=prowl-worker.service
+
+[Install]
+WantedBy=timers.target

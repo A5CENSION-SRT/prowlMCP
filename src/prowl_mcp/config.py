@@ -14,8 +14,6 @@ class Settings(BaseSettings):
     qbittorrent_save_path: str
     downloads_path: str
     qbittorrent_tag: str = "prowl"
-    qbittorrent_processed_tag: str = "processed"
-    completion_check_seconds: int = Field(default=300, ge=1)
     default_search_limit: int = Field(default=20, ge=1)
     prowlarr_indexer_ids: int = -2
     tv_library_path: str
@@ -34,8 +32,10 @@ class Settings(BaseSettings):
     metadata_poll_seconds: int = Field(default=2, ge=1)
     qbittorrent_no_eta: int = Field(default=8640000, ge=1)
     resume_check_seconds: int = Field(default=10, ge=1)
-    completion_max_attempts: int = Field(default=3, ge=1)
-    qbittorrent_failed_tag: str = "failed"
+    delivery_max_attempts: int = Field(default=3, ge=1)
+    pipeline_lock_wait_seconds: int = Field(default=600, ge=0)
+    wait_stall_minutes: int = Field(default=30, ge=1)
+    wait_poll_seconds: int = Field(default=60, ge=1)
     jellyfin_scan_timeout_seconds: int = Field(default=180, ge=1)
     jellyfin_scan_poll_seconds: int = Field(default=3, ge=1)
 

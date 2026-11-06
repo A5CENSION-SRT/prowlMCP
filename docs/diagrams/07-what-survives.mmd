@@ -1,0 +1,16 @@
+flowchart LR
+    subgraph closes["When you close the Claude session"]
+        direction TB
+        a["MCP server stops"]
+        b["Tool calls in progress stop"]
+        c["Background tasks stop"]
+    end
+    subgraph keeps["What keeps going"]
+        direction TB
+        d["qBittorrent downloads<br/>(Docker, restart policy)"]
+        e["Job files on disk"]
+        f["Worker timer delivers finished jobs"]
+        g["Notifier timer shows popups"]
+    end
+    closes -.->|"no effect on"| keeps
+    keeps --> back["Next session: list_jobs<br/>reports what happened"]

@@ -1,0 +1,28 @@
+flowchart LR
+    subgraph laptop["Laptop"]
+        env[".env<br/>settings and secrets (git-ignored)"]
+        code["MCP server, CLI, worker"]
+        jobs["Job files<br/>stage, destination, errors"]
+        lock["runner.lock<br/>one pipeline at a time"]
+        notified["notified.json<br/>popup state"]
+        dl["Download folder"]
+        units["systemd user timers"]
+    end
+    subgraph docker["Docker"]
+        qbtcfg["qBittorrent config<br/>and torrent list"]
+        prwcfg["Prowlarr config"]
+    end
+    subgraph server["Media server"]
+        lib["TV and Movies folders"]
+        jfcfg["Jellyfin database"]
+    end
+    env -->|"read by"| code
+    code <-->|"state"| jobs
+    code -->|"takes"| lock
+    units -->|"run"| code
+    units -->|"update"| notified
+    qbtcfg -->|"writes files"| dl
+    code -->|"reads and processes"| dl
+    code -->|"copies to"| lib
+    lib --- jfcfg
+    prwcfg -.->|"finds releases for"| qbtcfg

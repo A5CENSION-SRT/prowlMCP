@@ -1,0 +1,15 @@
+sequenceDiagram
+    autonumber
+    actor You
+    participant AI as AI client
+    participant MCP as MCP tools
+    participant Srv as Media server
+    AI->>MCP: request_library_delete(kind, path)
+    MCP->>Srv: look at the item (read only)
+    MCP-->>AI: exactly what would go + a one-time code
+    AI->>You: show the item, ask for approval
+    You->>AI: approve that item
+    AI->>MCP: confirm_library_delete(code)
+    MCP->>Srv: delete inside the library only
+    MCP-->>AI: done
+    Note over MCP,Srv: Nothing is deleted before step 6

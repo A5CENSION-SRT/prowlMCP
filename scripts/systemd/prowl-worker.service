@@ -1,0 +1,7 @@
+[Unit]
+Description=Deliver finished prowl-mcp downloads to Jellyfin
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/user/Coding/Repositories/prowlMCP
+ExecStart=/home/user/.local/bin/uv run --no-sync python -m prowl_mcp.cli worker

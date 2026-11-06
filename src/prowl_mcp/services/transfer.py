@@ -14,6 +14,8 @@ from prowl_mcp.services.downloads import find_one
 
 TV_PATTERN = re.compile(r"S\d{1,2}E\d{1,3}", re.IGNORECASE)
 RENAMEABLE_EXTENSIONS = {"mkv", "mp4", "m4v", "avi", "mov", "wmv", "ts"}
+# rsync keeps an interrupted copy here, not under the final name, so a retry resumes it instead of skipping a half file.
+PARTIAL_DIR = ".rsync-partial"
 Kind = Literal["tv", "movies"]
 
 
@@ -97,7 +99,7 @@ def remote_sha256(settings: Settings, remote_file: str) -> str:
 def remote_files(settings: Settings, remote_path: str) -> dict[str, int]:
     # A path that does not exist yet is an empty listing, not an error.
     quoted = shlex.quote(remote_path)
-    script = f"if [ -e {quoted} ]; then find {quoted} -type f -printf '%P\\t%s\\n'; fi"
+    script = f"if [ -e {quoted} ]; then find {quoted} -type f -not -path '*/{PARTIAL_DIR}/*' -printf '%P\\t%s\\n'; fi"
     result = _ssh_run(settings, script)
     if result.returncode != 0:
         raise TransferError(f"Could not list the server folder: {result.stderr.strip()}")
@@ -139,7 +141,7 @@ def copy_file(settings: Settings, source: Path, remote_file: str) -> None:
 
     rsh = " ".join(["ssh", *_ssh_options(settings)])
     result = subprocess.run(
-        ["rsync", "-a", "--partial", "--ignore-existing", "-e", rsh, str(source), f"{_ssh_target(settings)}:{remote_file}"],
+        ["rsync", "-a", f"--partial-dir={PARTIAL_DIR}", "--ignore-existing", "-e", rsh, str(source), f"{_ssh_target(settings)}:{remote_file}"],
         capture_output=True,
         text=True,
         check=False,
@@ -162,15 +164,15 @@ def transfer(settings: Settings, local: Path, destination: str, flatten: bool = 
 
     copied, skipped = [], []
     for target, source in plan.items():
-        if target in before:
-            skipped.append(target)
-            continue
         size = source.stat().st_size
         if after.get(target) != size:
-            raise TransferError(f"Size mismatch for {target}: local {size} bytes, server {after.get(target)} bytes.")
-        copied.append(target)
+            # A file that was already there with another size is a different file; it is never overwritten.
+            problem = "a different file with that name is already on the server" if target in before else "the copy is incomplete"
+            raise TransferError(f"Size mismatch for {target}: local {size} bytes, server {after.get(target)} bytes ({problem}).")
+        (skipped if target in before else copied).append(target)
 
-    verified = verify_checksums(settings, destination, plan, copied)
+    # Files skipped as already there are checked too, so a retry after a crash proves the whole set.
+    verified = verify_checksums(settings, destination, plan, copied + skipped)
     return TransferReport(remote_path=destination, copied=copied, skipped=skipped, verified=verified)
 
 

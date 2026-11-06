@@ -1,0 +1,13 @@
+flowchart TD
+    task(["A task arrives"]) --> kind{"What kind?"}
+    kind -->|"search, status, list,<br/>pause, resume, add"| mcp["MCP tool<br/>short and interactive"]
+    kind -->|"wait for a download,<br/>subtitles, transfer"| long{"Is Claude open<br/>and watching?"}
+    long -->|"yes"| bg["prowl CLI as a background task<br/>Claude wakes when it exits"]
+    long -->|"no, or you are away"| worker["systemd worker timer<br/>needs a queued job"]
+    kind -->|"tool errors or<br/>does not cover it"| term["Plain ssh, scp, ffprobe,<br/>docker, journalctl"]
+    kind -->|"delete anything"| ask["Ask the user first"]
+    mcp --> done(["Say which path was used"])
+    bg --> done
+    worker --> done
+    term --> done
+    ask --> done

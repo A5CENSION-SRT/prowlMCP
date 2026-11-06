@@ -1,0 +1,31 @@
+sequenceDiagram
+    autonumber
+    actor You
+    participant AI as AI client
+    participant MCP as MCP tools
+    participant QB as qBittorrent
+    participant CLI as prowl CLI
+    participant Srv as Media server
+    participant JF as Jellyfin
+    You->>AI: "Get this release"
+    AI->>MCP: search_torrents
+    MCP-->>AI: ranked releases
+    You->>AI: pick one
+    AI->>MCP: add_torrent(kind, folder)
+    MCP->>QB: add, stopped at metadata
+    MCP->>MCP: check file names
+    MCP->>QB: start (verdict ok)
+    MCP-->>AI: verdict + file tree + job queued
+    AI->>CLI: wait (background task)
+    CLI->>QB: poll progress
+    CLI-->>AI: exit 0, download finished
+    AI->>CLI: deliver --until subtitled (background)
+    CLI-->>AI: per-episode subtitle report
+    AI->>CLI: deliver (background)
+    CLI->>Srv: rsync, never overwrite
+    CLI->>Srv: SHA-256 compare
+    CLI->>JF: scan, wait, check videos listed
+    CLI-->>AI: delivered
+    AI->>You: report, ask before removing local data
+    You->>AI: yes
+    AI->>MCP: remove_torrent(delete_files)

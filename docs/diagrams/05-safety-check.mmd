@@ -1,0 +1,14 @@
+flowchart TD
+    start(["Torrent added, stopped at metadata"]) --> files{"File list<br/>arrived?"}
+    files -->|"no, timed out"| unknown["unknown"]
+    files -->|"yes"| exe{"Executable or<br/>disguised executable?"}
+    exe -->|"yes"| unsafe["unsafe"]
+    exe -->|"no"| warn{"Archive, link file<br/>or hidden file?"}
+    warn -->|"yes"| suspicious["suspicious"]
+    warn -->|"no"| ok["ok"]
+    ok --> startdl["Download starts automatically"]
+    unsafe --> remove["Torrent and files removed"]
+    suspicious --> hold["Held stopped<br/>until the user decides"]
+    unknown --> hold
+    startdl --> show["The whole file tree is shown in chat"]
+    hold --> show

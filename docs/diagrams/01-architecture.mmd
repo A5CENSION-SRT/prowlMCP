@@ -1,0 +1,35 @@
+flowchart LR
+    subgraph client["Your laptop"]
+        direction TB
+        agent["AI client<br/>(Claude Code or any MCP client)"]
+        mcp["prowl-mcp server<br/>19 tools, stdio"]
+        cli["prowl CLI<br/>wait, deliver, queue, jobs, worker"]
+        timers["systemd user timers<br/>worker + notifier"]
+        jobs[("Job files<br/>~/.cache/prowl-mcp/jobs")]
+        disk[("Download folder")]
+        popup["Desktop popups"]
+    end
+    subgraph docker["Docker on the laptop"]
+        direction TB
+        prowlarr["Prowlarr<br/>release search"]
+        qbt["qBittorrent<br/>download client"]
+    end
+    subgraph server["Media server"]
+        direction TB
+        library[("Library folders<br/>TV and Movies")]
+        jellyfin["Jellyfin<br/>streams to your devices"]
+    end
+    agent -->|"MCP tool calls"| mcp
+    agent -->|"background tasks"| cli
+    timers -->|"every 5 min"| cli
+    mcp --> prowlarr
+    mcp --> qbt
+    mcp <-->|"read and write"| jobs
+    cli <-->|"read and write"| jobs
+    qbt -->|"writes files"| disk
+    cli -->|"subtitles with ffmpeg"| disk
+    cli -->|"rsync over SSH + SHA-256"| library
+    cli -->|"scan and check"| jellyfin
+    mcp -->|"list, delete with approval"| library
+    library --- jellyfin
+    timers --> popup

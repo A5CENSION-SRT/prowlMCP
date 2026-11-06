@@ -1,0 +1,15 @@
+flowchart TD
+    s(["transfer for one job"]) --> plan["Plan: map each local file to a<br/>server path, rename episodes"]
+    plan --> clash{"Two files get<br/>the same name?"}
+    clash -->|"yes"| err1["Stop with an error"]
+    clash -->|"no"| mk["Create the destination folder"]
+    mk --> before["List what is already on the server"]
+    before --> loop["For each file not there yet:<br/>rsync with resume, never overwrite"]
+    loop --> after["List the server again"]
+    after --> size{"Sizes match<br/>for every file?"}
+    size -->|"no"| err2["Stop with an error<br/>(partial copy resumes on retry)"]
+    size -->|"yes"| sha["Compare SHA-256 of every file,<br/>new and already present"]
+    sha --> sum{"All equal?"}
+    sum -->|"no"| err3["Stop with an error"]
+    sum -->|"yes"| jf["Refresh Jellyfin, wait for the scan,<br/>check the videos are listed"]
+    jf --> fin(["Report. Local files are kept"])

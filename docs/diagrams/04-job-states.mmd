@@ -1,0 +1,13 @@
+stateDiagram-v2
+    [*] --> downloading: queue (add_torrent or queue_delivery)
+    downloading --> downloading: not finished yet
+    downloading --> subtitled: download done, subtitles processed
+    subtitled --> delivered: copied, checksums match, Jellyfin checked
+    downloading --> failed: 3 failed attempts
+    subtitled --> failed: 3 failed attempts
+    failed --> downloading: deliver or queue_delivery retries
+    delivered --> [*]: user approves removal, job file dropped
+    note right of subtitled
+        A retry after a crash resumes here:
+        subtitles are not repeated
+    end note

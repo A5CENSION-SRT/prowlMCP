@@ -4,8 +4,9 @@ Local MCP server (Prowlarr, qBittorrent, Jellyfin) plus the media-server media s
 
 ## Read the memory notes first
 
-At the start of every session in this repo, use these notes before acting. The first four are imported below. Read the fifth whenever you touch the server, the file layout, subtitles or Jellyfin, or when an MCP tool fails.
+At the start of every session in this repo, use these notes before acting. The first five are imported below. Read the sixth whenever you touch the server, the file layout, subtitles or Jellyfin, or when an MCP tool fails. Then call `list_jobs` and tell the user what happened while they were away.
 
+@docs/memory/when-to-use-what.md
 @docs/memory/prowl-mcp-usage.md
 @docs/memory/mcp-first-terminal-fallback.md
 @docs/memory/transfer-processed-file-only.md
@@ -16,7 +17,8 @@ At the start of every session in this repo, use these notes before acting. The f
 
 ## Working rules
 
-- Use the prowl-mcp tools first. If a tool fails, lacks a feature, or you are not confident in it, use `ssh`, `scp` and other terminal commands directly. Say which path you used.
+- Short, interactive work goes through the prowl-mcp tools. Long or unattended work (waiting for a download, subtitles, transfer) goes through the `prowl` CLI as a background Bash task, or the systemd worker. See `when-to-use-what.md`.
+- If a tool fails, lacks a feature, or you are not confident in it, use `ssh`, `scp` and other terminal commands directly. Say which path you used.
 - Ask the user before deleting anything, on the media server or on this PC, and before changing system settings. Restarting Jellyfin does not need approval.
 - Never store or print key contents, passwords, API keys or `.env` secrets.
 - When a memory note changes, update both copies: `docs/memory/` and `~/.claude/projects/<this-project>/memory/`.

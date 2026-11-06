@@ -1,0 +1,34 @@
+flowchart TB
+    subgraph entry["Entry points"]
+        tools["tools/<br/>MCP tool definitions"]
+        clip["cli.py<br/>command line"]
+        scripts["scripts/<br/>notifier, reaper"]
+    end
+    subgraph services["services/ (all the logic)"]
+        search["search"]
+        downloads["downloads"]
+        safety["safety"]
+        subtitles["subtitles"]
+        transfer["transfer"]
+        pipeline["pipeline<br/>jobs, stages, lock, wait"]
+        library["library"]
+    end
+    subgraph clients["clients/ (one per outside system)"]
+        prowlarr["prowlarr"]
+        qbittorrent["qbittorrent"]
+        jellyfin["jellyfin"]
+    end
+    cfg["config.py<br/>settings from .env"]
+    tools --> services
+    clip --> pipeline
+    scripts --> clients
+    pipeline --> subtitles
+    pipeline --> transfer
+    downloads --> safety
+    search --> prowlarr
+    downloads --> qbittorrent
+    subtitles --> qbittorrent
+    transfer --> qbittorrent
+    transfer --> jellyfin
+    cfg -.-> services
+    cfg -.-> clients
