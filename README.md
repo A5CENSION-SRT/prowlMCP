@@ -25,6 +25,7 @@ It ties together three self-hosted tools (Prowlarr, qBittorrent, Jellyfin) behin
 13. [Troubleshooting](#13-troubleshooting)
 14. [Limits and status](#14-limits-and-status)
 15. [Regenerating the diagrams](#15-regenerating-the-diagrams)
+16. [License](#16-license)
 
 ---
 
@@ -313,7 +314,7 @@ CLAUDE.md              points AI sessions at the notes
 
 ## 12. Project memory notes for AI sessions
 
-The repository carries a set of short notes in `docs/memory/` that a new AI session reads before acting. `CLAUDE.md` imports them, so they load automatically when a session opens in this folder. The same notes are mirrored into the assistant's own memory folder.
+The repository carries a set of short notes in `docs/memory/` that a new AI session reads before acting. `CLAUDE.md` imports them, so they load automatically when a session opens in this folder. They are written with placeholders instead of real addresses, user names and key paths; the owner keeps a private copy with the real values in the assistant's own memory folder.
 
 | Note | Read it for |
 |---|---|
@@ -355,3 +356,7 @@ scripts/render_diagrams.sh     # needs Node.js and Chrome or Chromium; set CHROM
 ```
 
 Edit a `.mmd` file, run the script, commit both the source and the SVG.
+
+## 16. License
+
+MIT. See [LICENSE](LICENSE).

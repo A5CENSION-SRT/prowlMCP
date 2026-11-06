@@ -112,7 +112,7 @@ def remote_files(settings: Settings, remote_path: str) -> dict[str, int]:
 
 
 def target_name(name: str, show: str | None) -> str:
-    # 'The.Example Show.S08E01.Title.1080p.mkv' becomes 'Example Show (2018) - S08E01.mkv', the way Jellyfin likes it.
+    # 'Example.Show.S08E01.Title.1080p.mkv' becomes 'Example Show (2018) - S08E01.mkv', the way Jellyfin likes it.
     path = PurePosixPath(name)
     match = TV_PATTERN.search(path.name)
     if show is None or match is None or path.suffix.lower().lstrip(".") not in RENAMEABLE_EXTENSIONS:

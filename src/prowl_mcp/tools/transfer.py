@@ -27,7 +27,7 @@ def register_transfer_tools(mcp: FastMCP, qb_client: httpx.Client, jf_client: ht
         """Copy a finished download to the Jellyfin server, check sizes and SHA-256 checksums, skip files already there, then refresh Jellyfin.
 
         Call list_library first and choose the destination yourself. kind picks the library (tv or movies). folder is a
-        path inside it, such as 'Example Show (2025)/Season 02'. When folder is given, the files go straight into
+        path inside it, such as 'Example Show (2020)/Season 02'. When folder is given, the files go straight into
         it, so a season pack does not leave a release-named folder inside. With rename on (the default) and a TV folder,
         episode videos are named 'Show (Year) - S02E01.mkv', using the first part of folder as the show name; set rename
         to false to keep the original names. The copy can only go inside the library and never overwrites a file. Without

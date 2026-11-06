@@ -3,5 +3,6 @@ Description=Notify when a qBittorrent download finishes
 
 [Service]
 Type=oneshot
-WorkingDirectory=/home/user/Coding/Repositories/prowlMCP
-ExecStart=/home/user/.local/bin/uv run --no-sync python scripts/notify_finished.py
+# Edit these two paths to match your machine (%h is your home folder).
+WorkingDirectory=%h/prowlMCP
+ExecStart=%h/.local/bin/uv run --no-sync python scripts/notify_finished.py

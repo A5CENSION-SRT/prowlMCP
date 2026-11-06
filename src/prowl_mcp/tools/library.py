@@ -17,7 +17,7 @@ def register_library_tools(mcp: FastMCP, jf_client: httpx.Client, settings: Sett
 
     @mcp.tool()
     def list_server_folder(kind: Literal["tv", "movies"], folder: str) -> LibraryListing:
-        """Read-only: list the files in one folder inside the Jellyfin TV or Movies library, such as 'Example Show (2025)/Season 02'. An empty folder or a missing one returns no files. It changes nothing on the server."""
+        """Read-only: list the files in one folder inside the Jellyfin TV or Movies library, such as 'Example Show (2020)/Season 02'. An empty folder or a missing one returns no files. It changes nothing on the server."""
         return library_service.list_folder(settings, kind, folder)
 
     @mcp.tool()

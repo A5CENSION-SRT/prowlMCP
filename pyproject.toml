@@ -1,7 +1,7 @@
 [project]
 name = "prowl-mcp"
 version = "0.1.0"
-description = "Add your description here"
+description = "Local MCP server that finds, checks, downloads, subtitles and delivers media to a Jellyfin server"
 readme = "README.md"
 authors = [
     { name = "Snehal Reddy Thadigotla", email = "snehalreddy@gmail.com" }
