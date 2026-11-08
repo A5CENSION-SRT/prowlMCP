@@ -57,6 +57,16 @@ def host_path(save_path: str, name: str, settings: Settings) -> Path:
     return Path(settings.downloads_path).expanduser() / relative / name
 
 
+def host_content_path(content_path: str, settings: Settings) -> Path:
+    """Map qBittorrent's content path (the real file or folder) onto this machine."""
+    container_root = PurePosixPath(settings.qbittorrent_save_path)
+    try:
+        relative = PurePosixPath(content_path).relative_to(container_root)
+    except ValueError as exc:
+        raise TransferError(f"Content path {content_path} is outside {container_root}.") from exc
+    return Path(settings.downloads_path).expanduser() / relative
+
+
 def _ssh_options(settings: Settings) -> list[str]:
     key = str(Path(settings.ssh_key_path).expanduser())
     return ["-p", str(settings.ssh_port), "-i", key, "-o", "BatchMode=yes"]
@@ -152,6 +162,9 @@ def copy_file(settings: Settings, source: Path, remote_file: str) -> None:
 
 def transfer(settings: Settings, local: Path, destination: str, flatten: bool = False, show: str | None = None) -> TransferReport:
     plan = plan_files(local, flatten, show)
+    # An empty plan means nothing was found to copy. That is a failure, never a successful delivery.
+    if not plan:
+        raise TransferError(f"Nothing to copy: no files found at {local}.")
     made = _ssh_run(settings, f"mkdir -p -- {shlex.quote(destination)}")
     if made.returncode != 0:
         raise TransferError(f"Could not create {destination}: {made.stderr.strip()}")
@@ -210,7 +223,9 @@ def transfer_torrent(qb_client: httpx.Client, jf_client: httpx.Client, settings:
     is_tv = (kind or library_for(torrent.name, settings)) == "tv"
     show = PurePosixPath(folder).parts[0] if rename and flatten and is_tv else None
 
-    report = transfer(settings, host_path(torrent.save_path, torrent.name, settings), destination, flatten, show)
+    if not torrent.content_path:
+        raise TransferError(f"qBittorrent did not report where {torrent.name} is stored.")
+    report = transfer(settings, host_content_path(torrent.content_path, settings), destination, flatten, show)
     message = f"Copied {len(report.copied)} new file(s) to {report.remote_path}. Checksums match for {len(report.verified)}.\n{check_jellyfin(jf_client, settings, report)}"
     if report.copied:
         message += "\n" + "\n".join(report.copied)
