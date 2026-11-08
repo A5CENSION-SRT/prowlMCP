@@ -98,9 +98,12 @@ def process_subtitles(client: httpx.Client, settings: Settings, info_hash: str) 
         raise SubtitleError(f"{torrent.name} is not finished ({torrent.progress:.0%}).")
 
     files = qbittorrent.list_files(client, torrent.info_hash)
-    videos = [f.name for f in files if PurePosixPath(f.name).suffix.lower().lstrip(".") in VIDEO_EXTENSIONS]
-    if not videos:
+    video_files = [f for f in files if PurePosixPath(f.name).suffix.lower().lstrip(".") in VIDEO_EXTENSIONS]
+    if not video_files:
         raise SubtitleError(f"{torrent.name} has no video files.")
+
+    # Same choice as the transfer: episodes when there are SxxEyy videos, otherwise only the largest video (the movie, not a sample).
+    videos = [f.name for f in video_files if episode_code(f.name)] or [max(video_files, key=lambda f: f.size).name]
 
     base = host_path(torrent.save_path, "", settings)
     single_video = len(videos) == 1

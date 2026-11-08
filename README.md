@@ -136,7 +136,7 @@ The embed step writes to a temporary file, probes it, and only then replaces the
 ![Transfer internals](docs/diagrams/08-transfer-internals.svg)
 
 - **Final file only.** The file pushed to the server is the final, subtitle-processed one, never the raw download.
-- **Naming.** With a TV `folder` such as `Example Show (2020)/Season 01`, videos are renamed `Example Show (2020) - S01E01.mkv`, the layout Jellyfin matches reliably. A pack leaves no release-named folder behind.
+- **Naming.** With a TV `folder` such as `Example Show (2020)/Season 01`, videos are renamed `Example Show (2020) - S01E01.mkv`, the layout Jellyfin matches reliably. With a movie `folder` such as `Example Movie (2020)`, the largest video is the movie and becomes `Example Movie (2020).mkv`. An English SRT goes next to it as `<same name>.eng.srt`. Only these files are copied: samples, `.nfo` files and other extras stay local, and the report lists them. With rename off, every file is copied as it is. A pack leaves no release-named folder behind.
 - **Never overwrites.** A file already on the server with the same name and size counts as present (and its checksum is still verified); a same-name file with another size is an error, not a replacement.
 - **Resumes.** An interrupted copy continues from a partial file kept in a hidden folder on the server, so a half-copied file is never mistaken for a finished one.
 - **Stays inside the library.** Folder names with `..`, absolute paths or newlines are rejected.
