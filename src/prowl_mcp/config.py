@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     wait_poll_seconds: int = Field(default=60, ge=1)
     jellyfin_scan_timeout_seconds: int = Field(default=180, ge=1)
     jellyfin_scan_poll_seconds: int = Field(default=3, ge=1)
+    trending_years: int = Field(default=2, ge=1)
+    trending_limit: int = Field(default=50, ge=1)
 
 
 settings = Settings()
