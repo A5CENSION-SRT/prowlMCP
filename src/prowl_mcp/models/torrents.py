@@ -18,4 +18,6 @@ class TorrentInfo(BaseModel):
     dlspeed: int
     num_seeds: int
     save_path: str
+    # The real top-level file or folder qBittorrent wrote. It can differ from the torrent name, such as a wrapper folder.
+    content_path: str = ""
     tags: str

@@ -1,5 +1,5 @@
 flowchart TD
-    s(["transfer for one job"]) --> plan["Plan: map each local file to a<br/>server path, rename episodes"]
+    s(["transfer for one job"]) --> plan["Plan: map each local file to a<br/>server path: pick videos and English SRTs,<br/>rename them, leave extras local"]
     plan --> clash{"Two files get<br/>the same name?"}
     clash -->|"yes"| err1["Stop with an error"]
     clash -->|"no"| mk["Create the destination folder"]
